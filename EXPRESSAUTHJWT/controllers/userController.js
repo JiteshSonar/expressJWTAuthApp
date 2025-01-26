@@ -14,7 +14,7 @@ class UserController {
         if (password === password_confirmation) {
           try {
             const salt = await bcrypt.genSalt(10);
-            const hashPassword = await bcrypt.hash(password, salt)
+            const hashPassword = await bcrypt.hash(password, salt);
             const userData = new UserModel({
               name: name,
               email: email,
@@ -22,9 +22,17 @@ class UserController {
               tc: tc,
             });
             await userData.save();
+            const saved_user = await UserModel.findOne({ email: email });
+            const token = jwt.sign(
+              { userID: saved_user._id },
+              process.env.JWT_SECRET_KEY,
+              { expiresIn: "5d" }
+            );
+
             res.status(201).send({
               status: "Success",
               message: "User is registered successfully!",
+              token : token
             });
           } catch (error) {
             res.send({
@@ -44,26 +52,35 @@ class UserController {
     }
   };
 
-  static userLgin = async (req, res) => {
+  static userLogin = async (req, res) => {
     try {
-      const { email, password } = req.body
+      const { email, password } = req.body;
       if (email && password) {
-        const user = await UserModel.findOne({ email: email })
+        const user = await UserModel.findOne({ email: email });
         if (email != null) {
-          const isMatch = await bcrypt.compare(password, user.password)
-          if ((user.email == email) && isMatch) {
+          const isMatch = await bcrypt.compare(password, user.password);
+          if (user.email == email && isMatch) {
+            const token = jwt.sign(
+              { userID: user._id },
+              process.env.JWT_SECRET_KEY,
+              { expiresIn: "5d" }
+            );
             res.send({
-              status: "success", message: "Login Success!"
-            })
+              status: "success",
+              message: "Login Success!",
+              token: token,
+            });
           } else {
             res.send({
-              status: "failed", message: "Invalid email or password"
-            })
+              status: "failed",
+              message: "Invalid email or password",
+            });
           }
         } else {
           res.send({
-            status: "failed", message: "You are not a registered user"
-          })
+            status: "failed",
+            message: "You are not a registered user",
+          });
         }
       } else {
         res.send({ status: "failed", message: "All fields are required" });
@@ -72,8 +89,29 @@ class UserController {
       res.send({ status: "failed", message: error });
       res.send({ status: "failed", message: "Unable to login!" });
     }
-  }
-}
+  };
 
+  static changeUserPassword = async (req, res) => {
+    const { password, password_confirmation } = req.body;
+
+    if (password && password_confirmation) {
+      if (password !== password_confirmation) {
+        res.send({
+          status: "failed",
+          message: "New Password and confirm password doesn't match",
+        });
+      } else {
+        const salt = await bcrypt.genSalt(10);
+        const hashPassword = await bcrypt.hash(password, salt);
+        res.send({
+          status: "failed",
+          message: "Password changed succesfully!",
+        });
+      }
+    } else {
+      res.send({ status: "failed", message: "All fields are Required" });
+    }
+  };
+}
 
 export default UserController;

@@ -7,7 +7,6 @@ const userSchema = new mongoose.Schema({
   tc: { type: Boolean, required: true },
 });
 
-//
 const UserModel = mongoose.model("user", userSchema);
 
 export default UserModel;
