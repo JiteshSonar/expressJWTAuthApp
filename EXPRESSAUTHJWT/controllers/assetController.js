@@ -2,66 +2,36 @@ import models from "../models/Asset.js";
 const { AssetModel, AssetCategoryModel } = models;
 
 class AssetController {
-  //   static AddAsset = async (req, res) => {
-  //     const {
-  //       productName,
-  //       categoryId,
-  //       serialNumber,
-  //       description,
-  //       model,
-  //       buyingDate,
-  //       price,
-  //     } = req.body;
-  //     const category = await AssetCategoryModel.findById(asset_category_id);
-  //     if (productName && serialNumber && model && buyingDate && price) {
-  //       try {
-  //         const assetData = new AssetModel({
-  //           productName: productName,
-  //           category: category,
-  //           serialNumber: serialNumber,
-  //           description: description,
-  //           model: model,
-  //           buyingDate: buyingDate,
-  //           price: price,
-  //         });
-  //         await assetData.save();
-  //         res
-  //           .status(201)
-  //           .send({
-  //             status: "Success",
-  //             message: "Asset is added successfully!",
-  //           })
-  //           .json(assetData);
-  //       } catch (error) {
-  //         res.send({
-  //           status: "failed",
-  //           message: "unable to add asset!",
-  //         });
-  //       }
-  //     } else {
-  //       res.send({
-  //         status: "failed",
-  //         message: "please fill all required values",
-  //       });
-  //     }
-  //   };
-
   static getAsset = async (req, res) => {
     try {
-      const totalAssetcount = await AssetModel.countDocuments();
       const totalAsset = await AssetModel.find();
-      res.json({
-          totalAssetcount: totalAssetcount,
-          totalAsset: totalAsset,
-        })
-        .send({
-          status: "success",
-          message: totalAsset,
-        });
+      return res.status(200).json({
+        status: "success",
+        message: "Assets fetched successfully",
+        totalAsset: totalAsset,
+      });
     } catch (error) {
-      res.send({
+      return res.status(500).json({
         status: "failed",
-        message: "unable to get Asset!",
+        message: "Unable to get assets!",
+        error: error.message,
+      });
+    }
+  };
+
+  static getAssetCategories = async (req, res) => {
+    try {
+      const assetCategories = await AssetCategoryModel.find();
+      return res.status(200).json({
+        status: "success",
+        message: "Asset Categories fetched successfully",
+        assetCategories: assetCategories,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: "failed",
+        message: "Unable to get assets!",
+        error: error.message,
       });
     }
   };
@@ -76,45 +46,84 @@ class AssetController {
         model,
         buyingDate,
         price,
+        supplier,
+        warrantyPeriod,
+        status,
+        condition,
+        location,
       } = req.body;
 
-      const category = new AssetCategoryModel(categoryData);
+      if (
+        !productName ||
+        !categoryData.category ||
+        !serialNumber ||
+        !model ||
+        !buyingDate ||
+        !price ||
+        !supplier
+      ) {
+        return res.status(400).json({
+          status: "failed",
+          message: "Please provide all required fields.",
+        });
+      }
+
+      const category = new AssetCategoryModel({
+        asset_category_id: categoryData.asset_category_id,
+        category: categoryData.category,
+        description: categoryData.description,
+        is_laptop: categoryData.is_laptop,
+      });
+
       await category.save();
 
       const asset = new AssetModel({
         productName,
-        category: category._id, 
+        category: category._id,
         serialNumber,
         description,
         model,
         buyingDate,
         price,
+        supplier,
+        warrantyPeriod,
+        status: status || "Available",
+        condition: condition || "New",
+        location,
       });
 
       await asset.save();
-      res.status(201).json({ asset, category });
+
+      return res.status(201).json({
+        status: "Success",
+        message: "Asset and Category added successfully.",
+        asset: asset,
+        category: category,
+      });
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      console.error("Error while adding asset and category: ", error);
+      return res.status(500).json({
+        status: "failed",
+        message: "An error occurred while adding the asset and category.",
+        error: error.message,
+      });
     }
   };
 
   static getAssetsAndCategories = async (req, res) => {
     try {
-        const assets = await AssetModel.find();
-        const assCategories = await AssetCategoryModel.find();
-        res.json({
-            assets : assets,
-            assCategories : assCategories
-        })
-        send({
-          status: "success",
-          message: totalAsset,
-        });
+      const assets = await AssetModel.find().populate("category");
+      return res.status(200).json({
+        status: "success",
+        message: "Assets and Categories fetched successfully",
+        assets: assets,
+      });
     } catch (error) {
-        send({
-          status: "failed",
-          message: error.message,
-        });
+      return res.status(500).json({
+        status: "failed",
+        message: "An error occurred while fetching assets and categories.",
+        error: error.message,
+      });
     }
   };
 }
