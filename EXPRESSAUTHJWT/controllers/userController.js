@@ -2,54 +2,109 @@ import UserModel from "../models/User.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import transporter from "../config/emailConfig.js";
-
 class UserController {
   static UserRegistration = async (req, res) => {
-    const { name, email, password, password_confirmation, tc } = req.body;
-    const user = await UserModel.findOne({ email: email });
+    const {
+      name,
+      email,
+      password,
+      password_confirmation,
+      phone,
+      address,
+      dob,
+      isActive = true,
+      tc,
+      role = "user",
+    } = req.body;
 
-    if (user) {
-      res.send({ status: "failed", message: "Email is already exists..." });
-    } else {
-      if (name && email && password && password_confirmation) {
-        if (password === password_confirmation) {
-          try {
-            const salt = await bcrypt.genSalt(10);
-            const hashPassword = await bcrypt.hash(password, salt);
-            const userData = new UserModel({
-              name: name,
-              email: email,
-              password: hashPassword,
-              tc: tc,
-            });
-            await userData.save();
-            const saved_user = await UserModel.findOne({ email: email });
-            const token = jwt.sign(
-              { userID: saved_user._id },
-              process.env.JWT_SECRET_KEY,
-              { expiresIn: "5d" }
-            );
-
-            res.status(201).send({
-              status: "Success",
-              message: "User is registered successfully!",
-              token: token,
-            });
-          } catch (error) {
-            res.send({
-              status: "failed",
-              message: "unable to register",
-            });
-          }
-        } else {
-          res.send({
-            status: "failed",
-            message: "Password and confirm password doesn't match",
-          });
-        }
-      } else {
-        res.send({ status: "failed", message: "All fields are required" });
+    try {
+      // Check if the user already exists
+      const existingUser = await UserModel.findOne({ email });
+      if (existingUser) {
+        return res.status(400).send({
+          status: "failed",
+          message: "Email already exists",
+        });
       }
+
+      // Validate required fields
+      if (
+        !name ||
+        !email ||
+        !password ||
+        !password_confirmation ||
+        !tc ||
+        !role
+      ) {
+        return res.status(400).send({
+          status: "failed",
+          message: "Required fields are missing",
+        });
+      }
+
+      // Validate password confirmation
+      if (password !== password_confirmation) {
+        return res.status(400).send({
+          status: "failed",
+          message: "Password and confirmation do not match",
+        });
+      }
+
+      // Hash password
+      const salt = await bcrypt.genSalt(10);
+      const hashPassword = await bcrypt.hash(password, salt);
+
+      // Create new user instance
+      const newUser = new UserModel({
+        name,
+        email,
+        password: hashPassword,
+        phone,
+        address: {
+          street: address?.street || "",
+          city: address?.city || "",
+          state: address?.state || "",
+          zip: address?.zip || "",
+        },
+        dob: dob ? new Date(dob) : null,
+        isActive,
+        tc,
+        role,
+      });
+
+      // Save the new user to the database
+      await newUser.save();
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userID: newUser._id, role: newUser.role },
+        process.env.JWT_SECRET_KEY,
+        { expiresIn: "5d" }
+      );
+
+      // Send response with token and user details
+      res.status(201).send({
+        status: "success",
+        message: "User registered successfully!",
+        token: token,
+        user: {
+          id: newUser._id,
+          name: newUser.name,
+          email: newUser.email,
+          phone: newUser.phone,
+          address: newUser.address,
+          dob: newUser.dob,
+          isActive: newUser.isActive,
+          tc: newUser.tc,
+          role: newUser.role,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).send({
+        status: "failed",
+        message: "Unable to register user",
+      });
     }
   };
 

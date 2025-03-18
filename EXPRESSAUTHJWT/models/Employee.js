@@ -139,7 +139,7 @@ const EmployeeSchema = new mongoose.Schema({
   },
   leaveBalance: {
     type: Number,
-    default: 20, // Default leave balance
+    default: 20,
   },
   isActive: {
     type: Boolean,

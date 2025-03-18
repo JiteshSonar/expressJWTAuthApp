@@ -1,30 +1,37 @@
 import jwt from "jsonwebtoken";
 import UserModel from "../models/User.js";
 
-var checkUserAuth = async (req, res, next) => {
-  let token;
+const checkUserAuth = async (req, res, next) => {
   const { authorization } = req.headers;
-  if (authorization && authorization.startsWith("Bearer")) {
-    try {
-      // Get Token from header
-      token = authorization.split(" ")[1];
 
-      // Verify Token
-      const { userID } = jwt.verify(token, process.env.JWT_SECRET_KEY);
-
-      // Get User from Token
-      req.user = await UserModel.findById(userID).select("-password");
-
-      next();
-    } catch (error) {
-      console.log(error);
-      res.status(401).send({ status: "failed", message: "Unauthorized User" });
-    }
-  }
-  if (!token) {
-    res
+  if (!authorization || !authorization.startsWith("Bearer ")) {
+    return res
       .status(401)
       .send({ status: "failed", message: "Unauthorized User, No Token" });
+  }
+
+  let token = authorization.split(" ")[1];
+
+  try {
+    const { userID } = jwt.verify(token, process.env.JWT_SECRET_KEY);
+
+    req.user = await UserModel.findById(userID).select("-password");
+
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({
+          status: "failed",
+          message: "Unauthorized User, Invalid Token",
+        });
+    }
+
+    next();
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(401)
+      .send({ status: "failed", message: "Unauthorized User, Invalid Token" });
   }
 };
 

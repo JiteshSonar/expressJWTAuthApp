@@ -23,6 +23,7 @@ router.post("/add_status", statusController.addStatus);
 router.delete("/delete-employe/:id", EmployeeController.DeleteEmployee);
 router.get("/get-employe/:employeeId", EmployeeController.getEmployeeById);
 router.get("/update-employee/:id", EmployeeController.UpdateEmployee);
+
 router.post(
   "/send-reset-password-email",
   UserController.sendUserPasswordResetEmail
