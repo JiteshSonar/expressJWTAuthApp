@@ -1,19 +1,15 @@
-import { json } from "express";
-import AssetModel from "../models/Asset.js";
 import EmployeeModel from "../models/Employee.js";
-import UserModel from "../models/User.js";
 
 class EmployeeController {
   static getEmployee = async (req, res) => {
     try {
-      const totalEmployees = await EmployeeModel.find();
-      res.json({
-        totalEmployees: totalEmployees,
-      });
+      const employees = await EmployeeModel.find();
+      res.json({ employees });
     } catch (error) {
-      res.send({
+      res.status(500).json({
         status: "failed",
-        message: "unable to get employee!",
+        message: "Unable to get employees!",
+        error: error.message,
       });
     }
   };
@@ -22,67 +18,102 @@ class EmployeeController {
     const {
       employeeName,
       email,
-      joiningDate,
-      position,
-      salary,
       phoneNumber,
       address,
+      dateOfBirth,
+      gender,
+      department,
+      position,
+      joiningDate,
+      salary,
+      reportingManager,
+      skills,
+      workExperience,
+      employmentType,
+      emergencyContact,
+      bankDetails,
+      documents,
+      leaveBalance,
     } = req.body;
 
     if (
       !employeeName ||
       !email ||
-      !joiningDate ||
-      !position ||
-      !salary ||
       !phoneNumber ||
-      !address
+      !address ||
+      !dateOfBirth ||
+      !gender ||
+      !department ||
+      !position ||
+      !joiningDate ||
+      !salary ||
+      !reportingManager ||
+      !skills ||
+      !workExperience ||
+      !employmentType ||
+      !emergencyContact ||
+      !bankDetails ||
+      !documents
     ) {
-      return res.status(400).send({
+      return res.status(400).json({
         status: "failed",
         message: "Please fill all required fields",
       });
     }
 
     if (!/^\d{10}$/.test(phoneNumber)) {
-      return res.status(400).send({
+      return res.status(400).json({
         status: "failed",
         message: "Phone number must be 10 digits",
       });
     }
 
     if (isNaN(salary) || salary <= 0) {
-      return res.status(400).send({
+      return res.status(400).json({
         status: "failed",
         message: "Salary must be a positive number",
       });
     }
 
     try {
-      const totalEmployees = await EmployeeModel.find();
-      const count = totalEmployees.length + 1;
-      const newEmployeeId = `EMP${count.toString().padStart(3, "0")}`;
+      const totalEmployees = await EmployeeModel.countDocuments();
+      const newEmployeeId = `EMP${(totalEmployees + 1)
+        .toString()
+        .padStart(3, "0")}`;
 
       const employeeData = new EmployeeModel({
         employeeName,
         employeeId: newEmployeeId,
         email,
-        joiningDate,
-        position,
-        salary,
         phoneNumber,
         address,
+        dateOfBirth,
+        gender,
+        department,
+        position,
+        joiningDate,
+        salary,
+        reportingManager,
+        skills,
+        workExperience,
+        employmentType,
+        emergencyContact,
+        bankDetails,
+        documents,
+        leaveBalance: leaveBalance ?? 20,
+        isActive: true,
       });
 
       await employeeData.save();
 
-      return res.status(201).send({
-        status: "Success",
+      return res.status(201).json({
+        status: "success",
         message: "Employee added successfully!",
+        employee: employeeData,
       });
     } catch (error) {
       console.error("Error adding employee:", error);
-      return res.status(500).send({
+      return res.status(500).json({
         status: "failed",
         message: "Unable to add employee!",
         error: error.message,
@@ -90,7 +121,7 @@ class EmployeeController {
     }
   };
 
-  static DeleteEmploy = async (req, res) => {
+  static DeleteEmployee = async (req, res) => {
     const { id } = req.params;
     try {
       if (!id) {
@@ -104,112 +135,79 @@ class EmployeeController {
         .status(200)
         .json({ message: "Employee deleted successfully." });
     } catch (error) {
-      return res
-        .status(500)
-        .json({
-          message: "An error occurred while deleting the employee.",
-          error: error.message,
-        });
+      return res.status(500).json({
+        message: "An error occurred while deleting the employee.",
+        error: error.message,
+      });
     }
   };
 
-  static getEmployById = async (req, res) => {
+  static getEmployeeById = async (req, res) => {
     const { employeeId } = req.params;
 
     try {
       if (!employeeId) {
         return res.status(400).json({ message: "Employee ID is required." });
       }
-      const getEmploy = await EmployeeModel.findOne({ employeeId });
+      const employee = await EmployeeModel.findOne({ employeeId });
 
-      if (!getEmploy) {
+      if (!employee) {
         return res.status(404).json({ message: "Employee not found." });
       }
-      return res.status(200).json({ employee: getEmploy });
+      return res.status(200).json({ employee });
     } catch (error) {
-      return res
-        .status(500)
-        .json({
-          message: "An error occurred while getting the employee.",
-          error: error.message,
-        });
+      return res.status(500).json({
+        message: "An error occurred while getting the employee.",
+        error: error.message,
+      });
     }
   };
 
   static UpdateEmployee = async (req, res) => {
     const { id } = req.params;
-
-    const {
-      employeeName,
-      employeeId = id,
-      email,
-      joiningDate,
-      position,
-      salary,
-      phoneNumber,
-      address,
-    } = req.body;
+    const updateFields = req.body;
 
     if (
-      !employeeId ||
-      !employeeName ||
-      !email ||
-      !joiningDate ||
-      !position ||
-      !salary ||
-      !phoneNumber ||
-      !address
+      updateFields.phoneNumber &&
+      !/^\d{10}$/.test(updateFields.phoneNumber)
     ) {
-      return res.status(400).send({
-        status: "failed",
-        message: "Please fill all required fields",
-      });
-    }
-
-    if (!/^\d{10}$/.test(phoneNumber)) {
-      return res.status(400).send({
+      return res.status(400).json({
         status: "failed",
         message: "Phone number must be 10 digits",
       });
     }
 
-    if (isNaN(salary) || salary <= 0) {
-      return res.status(400).send({
+    if (
+      updateFields.salary &&
+      (isNaN(updateFields.salary) || updateFields.salary <= 0)
+    ) {
+      return res.status(400).json({
         status: "failed",
         message: "Salary must be a positive number",
       });
     }
 
     try {
-      console.log("employee", id);
-
-      const employee = await EmployeeModel.findOne({ employeeId });
-      console.log("employee", employee);
+      const employee = await EmployeeModel.findByIdAndUpdate(id, updateFields, {
+        new: true,
+        runValidators: true,
+      });
 
       if (!employee) {
-        return res.status(404).send({
+        return res.status(404).json({
           status: "failed",
           message: "Employee not found",
         });
       }
 
-      employee.employeeName = employeeName;
-      employee.email = email;
-      employee.joiningDate = joiningDate;
-      employee.position = position;
-      employee.salary = salary;
-      employee.phoneNumber = phoneNumber;
-      employee.address = address;
-      employee.employeeId = id;
-      await employee.save();
-
-      return res.status(200).send({
-        status: "Success",
+      return res.status(200).json({
+        status: "success",
         message: "Employee updated successfully!",
+        employee,
       });
     } catch (error) {
       console.error("Error updating employee:", error);
-      return res.status(500).send({
+      return res.status(500).json({
         status: "failed",
         message: "Unable to update employee!",
         error: error.message,

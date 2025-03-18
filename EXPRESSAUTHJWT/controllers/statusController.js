@@ -26,10 +26,10 @@ class statusController {
         .send({ status: "success", message: "status added successfully!" })
         .json({ status });
     } catch (error) {
-        res.send({
-          status: "failed",
-          message: "unable to add status!",
-        });
+      res.send({
+        status: "failed",
+        message: "unable to add status!",
+      });
     }
   };
 }
